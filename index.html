@@ -119,10 +119,10 @@
         <div class="controls">
             <div class="control-group">
                 <div class="control-header">
-                    <label>Wind Speed (m/s)</label>
-                    <span id="val-wind">20</span>
+                    <label>Wind Speed (km/h)</label>
+                    <span id="val-wind">72</span>
                 </div>
-                <input type="range" id="slider-wind" min="0" max="45" value="20" step="1">
+                <input type="range" id="slider-wind" min="0" max="160" value="72" step="1">
             </div>
 
             <div class="control-group">
@@ -225,12 +225,12 @@
         let color = "";
         let bg = "";
 
-        if (wind < 15) {
+        if (wind < 54) {
             stateText = "INACTIVE (INSUFFICIENT SHEAR)";
             color = "var(--text-muted)";
             bg = "transparent";
             displays.status.style.borderColor = "var(--border)";
-        } else if (wind > 25) {
+        } else if (wind > 90) {
             stateText = "CHOKING (OVERBLOWN / TURBULENT)";
             color = "var(--red)";
             bg = "#fcebe9"; 
