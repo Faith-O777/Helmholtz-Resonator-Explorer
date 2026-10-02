@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hazard Subwoofer</title>
+    <style>
+        :root {
+            --bg-color: #f4f4f5;
+            --panel-bg: #ffffff;
+            --text-main: #18181b;
+            --text-muted: #71717a;
+            --border: #e4e4e7;
+            --accent: #3239f1; 
+            --green: #10b981;
+            --yellow: #f59e0b;
+            --red: #d8756f; 
+        }
+
+        body {
+            font-family: 'Roboto Mono', monospace;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 2rem;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            max-width: 800px;
+            width: 100%;
+            background: var(--panel-bg);
+            padding: 2.5rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--border);
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            margin-top: 0;
+            border-bottom: 2px solid var(--text-main);
+            padding-bottom: 0.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        .control-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .control-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        input[type=range] {
+            width: 100%;
+            accent-color: var(--accent);
+        }
+
+        .output-panel {
+            background: var(--bg-color);
+            padding: 1.5rem;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .metric {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .metric-label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+
+        #status-indicator {
+            padding: 1rem;
+            border-radius: 4px;
+            font-weight: bold;
+            text-align: center;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        @media (max-width: 600px) {
+            .grid { grid-template-columns: 1fr; }
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<div class="container">
+    <h1>Hazard Subwoofer</h1>
+    
+    <div class="grid">
+        <div class="controls">
+            <div class="control-group">
+                <div class="control-header">
+                    <label>Wind Speed (m/s)</label>
+                    <span id="val-wind">20</span>
+                </div>
+                <input type="range" id="slider-wind" min="0" max="45" value="20" step="1">
+            </div>
+
+            <div class="control-group">
+                <div class="control-header">
+                    <label>Wall Thickness / Neck Depth (mm)</label>
+                    <span id="val-wall">350</span>
+                </div>
+                <input type="range" id="slider-wall" min="150" max="600" value="350" step="10">
+            </div>
+
+            <div class="control-group">
+                <div class="control-header">
+                    <label>Neck Diameter (mm)</label>
+                    <span id="val-neck-dia">160</span>
+                </div>
+                <input type="range" id="slider-neck-dia" min="100" max="300" value="160" step="5">
+            </div>
+
+            <div class="control-group">
+                <div class="control-header">
+                    <label>Interior Belly Diameter (mm)</label>
+                    <span id="val-belly-dia">500</span>
+                </div>
+                <input type="range" id="slider-belly-dia" min="300" max="1000" value="500" step="10">
+            </div>
+
+            <div class="control-group">
+                <div class="control-header">
+                    <label>Interior Belly Depth (mm)</label>
+                    <span id="val-belly-depth">400</span>
+                </div>
+                <input type="range" id="slider-belly-depth" min="200" max="1000" value="400" step="10">
+            </div>
+        </div>
+
+        <div class="output-panel">
+            <div class="metric">
+                <span class="metric-label">Resonant Frequency</span>
+                <span class="metric-value"><span id="out-freq">0.0</span> Hz</span>
+            </div>
+            
+            <div class="metric">
+                <span class="metric-label">Captive Air Volume</span>
+                <span class="metric-value"><span id="out-vol">0.0</span> L</span>
+            </div>
+
+            <div class="metric">
+                <span class="metric-label">System State</span>
+                <div id="status-indicator">INITIALIZING</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const speedOfSound = 343; 
+
+    const elements = {
+        wind: document.getElementById('slider-wind'),
+        wall: document.getElementById('slider-wall'),
+        neckDia: document.getElementById('slider-neck-dia'),
+        bellyDia: document.getElementById('slider-belly-dia'),
+        bellyDepth: document.getElementById('slider-belly-depth')
+    };
+
+    const displays = {
+        wind: document.getElementById('val-wind'),
+        wall: document.getElementById('val-wall'),
+        neckDia: document.getElementById('val-neck-dia'),
+        bellyDia: document.getElementById('val-belly-dia'),
+        bellyDepth: document.getElementById('val-belly-depth'),
+        freq: document.getElementById('out-freq'),
+        vol: document.getElementById('out-vol'),
+        status: document.getElementById('status-indicator')
+    };
+
+    function calculate() {
+        Object.keys(elements).forEach(key => {
+            displays[key].innerText = elements[key].value;
+        });
+
+        const wind = parseFloat(elements.wind.value);
+        const wallM = parseFloat(elements.wall.value) / 1000;
+        const neckRadiusM = (parseFloat(elements.neckDia.value) / 2) / 1000;
+        const bellyRadiusM = (parseFloat(elements.bellyDia.value) / 2) / 1000;
+        const bellyDepthM = parseFloat(elements.bellyDepth.value) / 1000;
+
+        const bellyVolumeM3 = Math.PI * Math.pow(bellyRadiusM, 2) * bellyDepthM;
+        const bellyVolumeLiters = bellyVolumeM3 * 1000;
+        
+        const neckArea = Math.PI * Math.pow(neckRadiusM, 2);
+        const effectiveNeckLength = wallM + (1.5 * neckRadiusM);
+        
+        const frequency = (speedOfSound / (2 * Math.PI)) * Math.sqrt(neckArea / (bellyVolumeM3 * effectiveNeckLength));
+
+        displays.freq.innerText = frequency.toFixed(1);
+        displays.vol.innerText = bellyVolumeLiters.toFixed(1);
+
+        let stateText = "";
+        let color = "";
+        let bg = "";
+
+        if (wind < 15) {
+            stateText = "INACTIVE (INSUFFICIENT SHEAR)";
+            color = "var(--text-muted)";
+            bg = "transparent";
+            displays.status.style.borderColor = "var(--border)";
+        } else if (wind > 25) {
+            stateText = "CHOKING (OVERBLOWN / TURBULENT)";
+            color = "var(--red)";
+            bg = "#fcebe9"; 
+            displays.status.style.borderColor = "var(--red)";
+        } else {
+            if (frequency >= 40 && frequency <= 97) {
+                stateText = "ACTIVE (SUB-BASS TARGET ACHIEVED)";
+                color = "var(--green)";
+                bg = "#d1fae5"; 
+                displays.status.style.borderColor = "var(--green)";
+            } else {
+                stateText = "ACTIVE (OUT OF TARGET PITCH)";
+                color = "var(--yellow)";
+                bg = "#fef3c7"; 
+                displays.status.style.borderColor = "var(--yellow)";
+            }
+        }
+
+        displays.status.innerText = stateText;
+        displays.status.style.color = color;
+        displays.status.style.backgroundColor = bg;
+    }
+
+    Object.values(elements).forEach(el => {
+        el.addEventListener('input', calculate);
+    });
+
+    calculate();
+</script>
+</body>
+</html>
