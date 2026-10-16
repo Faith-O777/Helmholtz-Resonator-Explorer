@@ -148,6 +148,14 @@
                 </div>
                 <input type="range" id="slider-wind" min="20" max="160" value="52" step="1">
             </div>
+
+            <div class="control-group">
+                <div class="control-header">
+                    <label>Pod Shell Thickness (mm)</label>
+                    <span id="val-shell">35</span>
+                </div>
+                <input type="range" id="slider-shell" min="10" max="150" value="35" step="5">
+            </div>
         </div>
 
         <div class="output-panel">
@@ -157,8 +165,13 @@
             </div>
             
             <div class="metric">
-                <span class="metric-label">Sphere Internal Diameter</span>
+                <span class="metric-label">Sphere Internal Dia / Depth</span>
                 <span class="metric-value"><span id="out-belly-dia">0.0</span> mm</span>
+            </div>
+
+            <div class="metric">
+                <span class="metric-label">Outer Pod Diameter (CAD Solid)</span>
+                <span class="metric-sub"><span id="out-outer-dia">0.0</span> mm</span>
             </div>
 
             <div class="metric">
@@ -178,15 +191,18 @@
     const elements = {
         wall: document.getElementById('slider-wall'),
         freq: document.getElementById('slider-freq'),
-        wind: document.getElementById('slider-wind')
+        wind: document.getElementById('slider-wind'),
+        shell: document.getElementById('slider-shell')
     };
 
     const displays = {
         wall: document.getElementById('val-wall'),
         freq: document.getElementById('val-freq'),
         wind: document.getElementById('val-wind'),
+        shell: document.getElementById('val-shell'),
         neckOut: document.getElementById('out-neck'),
         bellyDiaOut: document.getElementById('out-belly-dia'),
+        outerDiaOut: document.getElementById('out-outer-dia'),
         volOut: document.getElementById('out-vol'),
         status: document.getElementById('status-indicator')
     };
@@ -201,6 +217,7 @@
         const wallMm = parseFloat(elements.wall.value);
         const targetFreq = parseFloat(elements.freq.value);
         const windKmh = parseFloat(elements.wind.value);
+        const shellMm = parseFloat(elements.shell.value);
 
         // Convert constraints to standard units (meters, m/s)
         const wallM = wallMm / 1000;
@@ -222,10 +239,12 @@
         // 4. SPHERE GEOMETRY (V = 4/3 * pi * r^3  -->  r = cbrt((3 * V) / (4 * pi)))
         const requiredBellyRadiusM = Math.cbrt((3 * requiredVolumeM3) / (4 * Math.PI));
         const requiredBellyDiaMm = (requiredBellyRadiusM * 2) * 1000;
+        const outerPodDiaMm = requiredBellyDiaMm + (2 * shellMm);
 
         // Output results to UI
         displays.neckOut.innerText = neckDiaMm.toFixed(1);
         displays.bellyDiaOut.innerText = requiredBellyDiaMm.toFixed(1);
+        displays.outerDiaOut.innerText = outerPodDiaMm.toFixed(1);
         displays.volOut.innerText = requiredVolumeLiters.toFixed(1);
 
         // 5. Diagnostics & Structural Logic Flags
@@ -233,7 +252,7 @@
         let color = "";
         let bg = "";
 
-        if (neckDiaMm >= requiredBbellyDiaMm) {
+        if (neckDiaMm >= requiredBellyDiaMm) {
             stateText = "ERROR: NECK WIDER THAN SPHERE";
             color = "var(--red)";
             bg = "#fcebe9"; 
