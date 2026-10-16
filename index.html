@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Resonator Calculator</title>
+    <title>Spherical Resonator Calculator</title>
     <style>
         :root {
             --bg-color: #f4f4f5;
@@ -74,7 +74,7 @@
             border: 1px solid var(--border);
             display: flex;
             flex-direction: column;
-            gap: 1.5rem;
+            gap: 1.25rem;
         }
 
         .metric {
@@ -96,6 +96,12 @@
             color: var(--accent);
         }
 
+        .metric-sub {
+            font-size: 1.15rem;
+            font-weight: bold;
+            color: var(--text-main);
+        }
+
         #status-indicator {
             padding: 1rem;
             border-radius: 4px;
@@ -115,13 +121,13 @@
 <body>
 
 <div class="container">
-    <h1>Resonator Calculator</h1>
+    <h1>Spherical Resonator Calculator</h1>
     
     <div class="grid">
         <div class="controls">
             <div class="control-group">
                 <div class="control-header">
-                    <label>Structural Wall Thickness (mm)</label>
+                    <label>Structural Wall / Neck Length (mm)</label>
                     <span id="val-wall">230</span>
                 </div>
                 <input type="range" id="slider-wall" min="100" max="600" value="230" step="5">
@@ -138,17 +144,17 @@
             <div class="control-group">
                 <div class="control-header">
                     <label>Target Wind Speed (km/h)</label>
-                    <span id="val-wind">74</span>
+                    <span id="val-wind">52</span>
                 </div>
-                <input type="range" id="slider-wind" min="20" max="160" value="74" step="1">
+                <input type="range" id="slider-wind" min="20" max="160" value="52" step="1">
             </div>
 
             <div class="control-group">
                 <div class="control-header">
-                    <label>Fabricated Belly Depth (mm)</label>
-                    <span id="val-depth">640</span>
+                    <label>Pod Shell Thickness (mm)</label>
+                    <span id="val-shell">35</span>
                 </div>
-                <input type="range" id="slider-depth" min="50" max="2000" value="640" step="10">
+                <input type="range" id="slider-shell" min="10" max="150" value="35" step="5">
             </div>
         </div>
 
@@ -159,13 +165,18 @@
             </div>
             
             <div class="metric">
-                <span class="metric-label">Required Belly Diameter</span>
+                <span class="metric-label">Sphere Internal Dia / Depth</span>
                 <span class="metric-value"><span id="out-belly-dia">0.0</span> mm</span>
             </div>
 
             <div class="metric">
+                <span class="metric-label">Outer Pod Diameter (CAD Solid)</span>
+                <span class="metric-sub"><span id="out-outer-dia">0.0</span> mm</span>
+            </div>
+
+            <div class="metric">
                 <span class="metric-label">Total Captive Volume</span>
-                <span class="metric-value" style="font-size: 1.2rem; color: var(--text-main);"><span id="out-vol">0.0</span> Liters</span>
+                <span class="metric-sub"><span id="out-vol">0.0</span> Liters</span>
             </div>
 
             <div id="status-indicator">INITIALIZING</div>
@@ -181,16 +192,17 @@
         wall: document.getElementById('slider-wall'),
         freq: document.getElementById('slider-freq'),
         wind: document.getElementById('slider-wind'),
-        depth: document.getElementById('slider-depth')
+        shell: document.getElementById('slider-shell')
     };
 
     const displays = {
         wall: document.getElementById('val-wall'),
         freq: document.getElementById('val-freq'),
         wind: document.getElementById('val-wind'),
-        depth: document.getElementById('val-depth'),
+        shell: document.getElementById('val-shell'),
         neckOut: document.getElementById('out-neck'),
         bellyDiaOut: document.getElementById('out-belly-dia'),
+        outerDiaOut: document.getElementById('out-outer-dia'),
         volOut: document.getElementById('out-vol'),
         status: document.getElementById('status-indicator')
     };
@@ -205,12 +217,11 @@
         const wallMm = parseFloat(elements.wall.value);
         const targetFreq = parseFloat(elements.freq.value);
         const windKmh = parseFloat(elements.wind.value);
-        const depthMm = parseFloat(elements.depth.value);
+        const shellMm = parseFloat(elements.shell.value);
 
         // Convert constraints to standard units (meters, m/s)
         const wallM = wallMm / 1000;
         const windMs = windKmh / 3.6;
-        const depthM = depthMm / 1000;
 
         // 2. STROUHAL EQUATION (Calculate Neck Diameter)
         const neckDiaM = (strouhalConstant * windMs) / targetFreq;
@@ -225,14 +236,15 @@
         const requiredVolumeM3 = neckArea / (effectiveNeckLength * frequencyTerm);
         const requiredVolumeLiters = requiredVolumeM3 * 1000;
 
-        // 4. CYLINDER GEOMETRY (Calculate Required Belly Diameter)
-        const requiredBellyAreaM2 = requiredVolumeM3 / depthM;
-        const requiredBellyRadiusM = Math.sqrt(requiredBellyAreaM2 / Math.PI);
+        // 4. SPHERE GEOMETRY (V = 4/3 * pi * r^3  -->  r = cbrt((3 * V) / (4 * pi)))
+        const requiredBellyRadiusM = Math.cbrt((3 * requiredVolumeM3) / (4 * Math.PI));
         const requiredBellyDiaMm = (requiredBellyRadiusM * 2) * 1000;
+        const outerPodDiaMm = requiredBellyDiaMm + (2 * shellMm);
 
         // Output results to UI
         displays.neckOut.innerText = neckDiaMm.toFixed(1);
         displays.bellyDiaOut.innerText = requiredBellyDiaMm.toFixed(1);
+        displays.outerDiaOut.innerText = outerPodDiaMm.toFixed(1);
         displays.volOut.innerText = requiredVolumeLiters.toFixed(1);
 
         // 5. Diagnostics & Structural Logic Flags
@@ -241,17 +253,17 @@
         let bg = "";
 
         if (neckDiaMm >= requiredBellyDiaMm) {
-            stateText = "ERROR: NECK WIDER THAN BELLY";
+            stateText = "ERROR: NECK WIDER THAN SPHERE";
             color = "var(--red)";
             bg = "#fcebe9"; 
             displays.status.style.borderColor = "var(--red)";
         } else if (requiredBellyDiaMm > 2000) {
-            stateText = "WARNING: BELLY DIA EXCEEDS 2 METERS";
+            stateText = "WARNING: SPHERE DIA EXCEEDS 2 METERS";
             color = "var(--yellow)";
             bg = "#fef3c7"; 
             displays.status.style.borderColor = "var(--yellow)";
         } else {
-            stateText = "FABRICATION GEOMETRY VALID";
+            stateText = "SPHERICAL GEOMETRY VALID";
             color = "var(--green)";
             bg = "#d1fae5"; 
             displays.status.style.borderColor = "var(--green)";
